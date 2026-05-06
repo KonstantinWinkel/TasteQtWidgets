@@ -135,6 +135,8 @@ void Excel::importExcel()
 {
     QList<Requirement> reqList;
 
+    QList<int> skippedLines; // to display later what was skipped
+
     parseExcel();
 
     if (!m_error) {
@@ -165,6 +167,7 @@ void Excel::importExcel()
                 // Requirement Identifier, Requirement, Validation Method, Validation Version
                 if (requirement.m_id == "" || requirement.m_description == "" || requirement.m_validation.empty() || requirement.m_valVersion == ""){
                     qDebug() << "Row " << r << " is incomplete, one of the required fields is missing or invalid, skipping...";
+                    skippedLines << r;
                     continue;
                 }
             }
@@ -191,6 +194,7 @@ void Excel::importExcel()
                 // Requirement Identifier, Requirement, Traceability to Parent, Validation Approach
                 if(requirement.m_id == "" || requirement.m_description == "" || requirement.m_parents.empty() || requirement.m_validation.empty()) {
                     qDebug() << "Row " << r << " is incomplete, one of the required fields is missing or invalid, skipping...";
+                    skippedLines << r;
                     continue;
                 }
             }
@@ -204,6 +208,19 @@ void Excel::importExcel()
         m_model->syncRequirements();
         // Imported requirements are local until exported to GitLab -> mark pending edits
         m_model->setPendingEdits(true);
+        
+        // display skipped lines in warning 
+        if(skippedLines.size() > 0) {
+            QString skippedLinesText = QString();
+            for(int i = 0; i < skippedLines.size() ; ++i) skippedLinesText += "Line " + QString::number(skippedLines[i]) + "\n";
+        
+            QMessageBox box;
+            box.setWindowTitle("Skipped Lines during Import");
+            box.setText("Some lines were skipped during import because they were incomplete.\nIf this was intended, ignore this message.\nOtherwise, check the corresponding lines");
+            box.setDetailedText(skippedLinesText);  // scrollable area
+            box.exec();
+        }
+
     } else {
         qDebug() << "ERROR - Excel import failed";
     }
